@@ -14,6 +14,7 @@ router.post(
     body("email").isEmail().withMessage("Email must be valid"),
     body("password")
       .trim()
+      .notEmpty()
       .isLength({ min: 4, max: 20 })
       .withMessage("Password"),
   ],
@@ -35,6 +36,40 @@ router.post(
       res.send({ token });
     } catch (err) {
       res.status(422).send(err.message);
+    }
+  }
+);
+
+router.post(
+  "/signin",
+  [
+    body("email").isEmail().withMessage("Email must be valid"),
+    body("password")
+      .trim()
+      .notEmpty()
+      .isLength({ min: 4, max: 20 })
+      .withMessage("You must supply a password"),
+  ],
+  validateRequest,
+  async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(422).send({ error: "Must provide email and password" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(422).send({ error: "Invalid password or email" });
+    }
+
+    try {
+      await user.comparePassword(password);
+      const token = jwt.sign({ userId: user._id }, process.env.JWT_KEY);
+
+      res.send({ token });
+    } catch (err) {
+      return res.status(422).send({ error: "Invalid password or email" });
     }
   }
 );
